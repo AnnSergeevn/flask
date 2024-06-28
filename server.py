@@ -12,17 +12,17 @@ app = Flask('app')
 bcrypt = flask_bcrypt.Bcrypt(app)
 
 
-def hash_password(password: str) -> str:
-    password = password.encode()
-    password = bcrypt.generate_password_hash(password)
-    password = password.decode()
-    return password
-
-
-def check_password(user_password: str, db_password: str) -> bool:
-    user_password = user_password.encode()
-    db_password = db_password.encode()
-    return bcrypt.check_password_hash(db_password, user_password)
+# def hash_password(password: str) -> str:
+#     password = password.encode()
+#     password = bcrypt.generate_password_hash(password)
+#     password = password.decode()
+#     return password
+#
+#
+# def check_password(user_password: str, db_password: str) -> bool:
+#     user_password = user_password.encode()
+#     db_password = db_password.encode()
+#     return bcrypt.check_password_hash(db_password, user_password)
 
 
 class ApiError(Exception):
@@ -55,9 +55,9 @@ def validate(x: Type[CreateAdvertisement] | Type[UpdateAdvertisement], json_data
     except ValidationError as e:
         error = e.errors()[0]
         error.pop('ctx', None)
-        raise ApiError(400, e.errors())
+        raise ApiError(400, error)
 
-
+#
 # def get_user(user_id: int):
 #     user = request.session.get(User, user_id)
 #     if user is None:
@@ -73,7 +73,7 @@ def validate(x: Type[CreateAdvertisement] | Type[UpdateAdvertisement], json_data
 #         raise ApiError(409, "user already exists")
 #     return user
 
-
+#
 # class UserView(MethodView):
 #     def get(self, user_id: int):
 #         user = get_user(user_id)
@@ -106,6 +106,7 @@ def validate(x: Type[CreateAdvertisement] | Type[UpdateAdvertisement], json_data
 #         request.session.commit()
 #         return jsonify({"status": "deleted"})
 
+
 def get_advertisement(post_id):
     post_ = request.session.get(Advertisement, post_id)
     if post_ is None:
@@ -130,7 +131,7 @@ class ApiV1(MethodView):
     def post(self):
         validate_data = validate(CreateAdvertisement, request.json)
         new_advertisement = Advertisement(**validate_data)
-        return jsonify({"id": new_advertisement.id})
+        return new_advertisement.json()
 
     def patch(self, post_id):
         validate_data = validate(UpdateAdvertisement, request.json)
@@ -154,3 +155,19 @@ app.add_url_rule("/api", view_func=api_view, methods=["POST"])
 
 
 app.run()
+
+# user_view = UserView.as_view("user")
+#
+# app.add_url_rule(
+#     "/user/<int:user_id>",
+#     view_func=user_view,
+#     methods=["GET", "PATCH", "DELETE"]
+# )
+#
+# app.add_url_rule(
+#     "/user",
+#     view_func=user_view,
+#     methods=["POST"]
+# )
+
+

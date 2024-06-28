@@ -44,7 +44,7 @@ class Advertisement(Base):
     heading = mapped_column(String(20), nullable=False)
     description = mapped_column(Text)
     date_of_creation = mapped_column(DateTime, server_default=func.now())
-    user_id = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    user_id = mapped_column(Integer, ForeignKey("app_users.id", ondelete="CASCADE"))
     user = relationship("User", backref="advertisements")
 
-#Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)

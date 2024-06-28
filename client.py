@@ -1,13 +1,22 @@
 import requests as rq
 
-url = "http://127.0.0.1:5000/api"
-response = rq.post(url,
+#url = "http://127.0.0.1:5000/api"
+response = rq.post("http://127.0.0.1:5000/api",
                    json={'heading': 'Статья',
                                     'description': 'Описание',
-                                    'user_id': 1})
+                                    'user_id': 1},)
 
 print(response.status_code)
 print(response.text)
+
+# response = rq.post(
+#     "http://127.0.0.1:5000/user",
+#     json={
+#         'name': 'user_6',
+#         "password": "12fdesggege34"
+#     },
+#
+# )
 
 # response = rq.get('http://127.0.0.1:5000/api/1')
 #
