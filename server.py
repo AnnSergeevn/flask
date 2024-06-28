@@ -3,7 +3,6 @@ from flask.views import MethodView
 import flask_bcrypt
 from pydantic import ValidationError
 from schema import CreateAdvertisement, UpdateAdvertisement
-from typing import Type
 
 from models import User, Session, Advertisement
 from sqlalchemy.exc import IntegrityError
@@ -12,17 +11,17 @@ app = Flask('app')
 bcrypt = flask_bcrypt.Bcrypt(app)
 
 
-# def hash_password(password: str) -> str:
-#     password = password.encode()
-#     password = bcrypt.generate_password_hash(password)
-#     password = password.decode()
-#     return password
-#
-#
-# def check_password(user_password: str, db_password: str) -> bool:
-#     user_password = user_password.encode()
-#     db_password = db_password.encode()
-#     return bcrypt.check_password_hash(db_password, user_password)
+def hash_password(password: str) -> str:
+    password = password.encode()
+    password = bcrypt.generate_password_hash(password)
+    password = password.decode()
+    return password
+
+
+def check_password(user_password: str, db_password: str) -> bool:
+    user_password = user_password.encode()
+    db_password = db_password.encode()
+    return bcrypt.check_password_hash(db_password, user_password)
 
 
 class ApiError(Exception):
@@ -49,22 +48,20 @@ def after_request(http_response: Response):
     return http_response
 
 
-def validate(x: Type[CreateAdvertisement] | Type[UpdateAdvertisement], json_data):
+def validate(json_data, schema_cls):
     try:
-        return x(**json_data).dict(exclude_none=True)
-    except ValidationError as e:
-        error = e.errors()[0]
+        return schema_cls(**json_data).dict(exclude_unset=True)
+    except ValidationError as err:
+        error = err.errors()[0]
         error.pop('ctx', None)
         raise ApiError(400, error)
 
-#
+
 # def get_user(user_id: int):
 #     user = request.session.get(User, user_id)
 #     if user is None:
 #         raise ApiError(404, "user not found")
 #     return user
-#
-#
 # def add_user(user: User):
 #     try:
 #         request.session.add(user)
@@ -73,7 +70,13 @@ def validate(x: Type[CreateAdvertisement] | Type[UpdateAdvertisement], json_data
 #         raise ApiError(409, "user already exists")
 #     return user
 
-#
+def get_advertisement(s: Session, post_id):
+    post_ = s.get(Advertisement, post_id)
+    if post_ is None:
+        raise ApiError(404, "Такой записи нет")
+    return post_
+
+
 # class UserView(MethodView):
 #     def get(self, user_id: int):
 #         user = get_user(user_id)
@@ -107,54 +110,59 @@ def validate(x: Type[CreateAdvertisement] | Type[UpdateAdvertisement], json_data
 #         return jsonify({"status": "deleted"})
 
 
-def get_advertisement(post_id):
-    post_ = request.session.get(Advertisement, post_id)
-    if post_ is None:
-        raise ApiError(404, "Такой записи нет")
-    return post_
-
-
 class ApiV1(MethodView):
     def get(self, post_id):
-        post_ = get_advertisement(post_id)
-        return jsonify(
-            {
-                "id": post_.id,
-                "heading": post_.heading,
-                "description": post_.description,
-                "date_of_creation": post_.date_of_creation,
-                "User_name": post_.user.name,
-                "id_user": post_.user.id,
-            }
-        )
+        with Session() as s:
+            post_ = get_advertisement(s, post_id)
+            return jsonify(
+                {
+                    "id": post_.id,
+                    "heading": post_.heading,
+                    "description": post_.description,
+                    "date_of_creation": post_.date_of_creation,
+                    "User_name": post_.user.name,
+                    "id_user": post_.user.id,
+                }
+            )
 
     def post(self):
-        validate_data = validate(CreateAdvertisement, request.json)
-        new_advertisement = Advertisement(**validate_data)
-        return new_advertisement.json()
+        advertisement_data = validate(request.json, CreateAdvertisement)
+        with Session() as session:
+            new_advertisement = Advertisement(**advertisement_data)
+            session.add(new_advertisement)
+            session.commit()
+            return jsonify({
+                'id': new_advertisement.id,
+                'heading': new_advertisement.heading,
+                'description': new_advertisement.description,
+                'user_id': new_advertisement.user_id
+            })
 
     def patch(self, post_id):
-        validate_data = validate(UpdateAdvertisement, request.json)
-        post_ = get_advertisement(post_id)
-        for key, val in validate_data.items():
-            setattr(post_, key, val)
-        return jsonify({"heading": post_.heading})
+        advertisement_data = request.json
+        with Session() as session:
+            advertisement = session.query(Advertisement).get(post_id)
+            for field, value in advertisement_data.items():
+                setattr(advertisement, field, value)
+            session.add(advertisement)
+            session.commit()
+            return jsonify({
+                'id': advertisement.id,
+                'heading': advertisement.heading,
+                'description': advertisement.description,
+                'user_id': advertisement.user_id
+            })
+
 
     def delete(self, post_id):
-        post_ = get_advertisement(post_id)
-        request.session.delete(post_)
-        request.session.commit()
-        return jsonify({"status": "200"})
+        with Session() as session:
+            advertisement = session.query(Advertisement).get(post_id)
+            session.delete(advertisement)
+            session.commit()
+            return jsonify({
+                'status': 'deleted'
+            })
 
-api_view = ApiV1.as_view("api_v1")
-
-app.add_url_rule(
-    "/api/<int:post_id>", view_func=api_view, methods=["GET", "PATCH", "DELETE"]
-)
-app.add_url_rule("/api", view_func=api_view, methods=["POST"])
-
-
-app.run()
 
 # user_view = UserView.as_view("user")
 #
@@ -170,4 +178,11 @@ app.run()
 #     methods=["POST"]
 # )
 
+api_view = ApiV1.as_view("api_v1")
 
+app.add_url_rule(
+    "/api/<int:post_id>", view_func=api_view, methods=["GET", "PATCH", "DELETE"]
+)
+app.add_url_rule("/api", view_func=api_view, methods=["POST"])
+
+app.run()

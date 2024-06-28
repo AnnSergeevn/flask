@@ -1,6 +1,5 @@
 import pydantic
 from typing import Optional
-from pydantic import BaseModel, validator
 from models import Session, User
 
 
@@ -23,7 +22,7 @@ from models import Session, User
 #     password: Optional[str]
 
 
-class CreateAdvertisement(BaseModel):
+class CreateAdvertisement(pydantic.BaseModel):
     heading: str
     description: str
     user_id: int
@@ -37,7 +36,7 @@ class CreateAdvertisement(BaseModel):
             return value
 
 
-class UpdateAdvertisement(BaseModel):
+class UpdateAdvertisement(pydantic.BaseModel):
     heading: Optional[str]
     description: Optional[str]
     user_id: Optional[int]

@@ -30,12 +30,6 @@ class User(Base):
         server_default=func.now()
     )
 
-    def json(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "registration_time": self.registration_time.isoformat()
-        }
 
 class Advertisement(Base):
     __tablename__ = "advertisements"
@@ -48,3 +42,5 @@ class Advertisement(Base):
     user = relationship("User", backref="advertisements")
 
 Base.metadata.create_all(bind=engine)
+
+
